@@ -87,17 +87,17 @@ class ActorCritic(nn.Module):
 
         if self.has_continuous_action_space:
             action_mean = self.actor(state)
-            cov_mat = torch.diag(self.action_var).unsqueeze(dim=0)
+            cov_mat = torch.diag(self.action_var).unsqueeze(dim=0) #strange,why use unsqueeze,batch input?,unsqueeze not needed here
             dist = MultivariateNormal(action_mean, cov_mat)
         else:
             action_probs = self.actor(state)
             dist = Categorical(action_probs)
 
-        action = dist.sample()
+        action = dist.sample() #action perform randomly
         action_logprob = dist.log_prob(action)
         state_val = self.critic(state)
 
-        return action.detach(), action_logprob.detach(), state_val.detach()
+        return action.detach(), action_logprob.detach(), state_val.detach() #on policy so do it in rollout
     
     def evaluate(self, state, action):
 
@@ -105,12 +105,12 @@ class ActorCritic(nn.Module):
             action_mean = self.actor(state)
             
             action_var = self.action_var.expand_as(action_mean)
-            cov_mat = torch.diag_embed(action_var).to(device)
+            cov_mat = torch.diag_embed(action_var).to(device) #do the same thing as before but use a different trick
             dist = MultivariateNormal(action_mean, cov_mat)
             
             # For Single Action Environments.
             if self.action_dim == 1:
-                action = action.reshape(-1, self.action_dim)
+                action = action.reshape(-1, self.action_dim) #in case the dim degrade
         else:
             action_probs = self.actor(state)
             dist = Categorical(action_probs)
@@ -159,7 +159,7 @@ class PPO:
     def decay_action_std(self, action_std_decay_rate, min_action_std):
         print("--------------------------------------------------------------------------------------------")
         if self.has_continuous_action_space:
-            self.action_std = self.action_std - action_std_decay_rate
+            self.action_std = self.action_std - action_std_decay_rate # not wise to use sub
             self.action_std = round(self.action_std, 4)
             if (self.action_std <= min_action_std):
                 self.action_std = min_action_std
@@ -197,7 +197,7 @@ class PPO:
 
             return action.item()
 
-    def update(self):
+    def update(self): # very clear yet i can't see batch,although the buffer can be arbitrally long
         # Monte Carlo estimate of returns
         rewards = []
         discounted_reward = 0
@@ -208,11 +208,12 @@ class PPO:
             rewards.insert(0, discounted_reward)
             
         # Normalizing the rewards
+        #is reward normalization necessary?
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
 
         # convert list to tensor
-        old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(device)
+        old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(device) #use stack to change list to matrix,and use squeeze to exclude empty dims
         old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(device)
         old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(device)
         old_state_values = torch.squeeze(torch.stack(self.buffer.state_values, dim=0)).detach().to(device)

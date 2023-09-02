@@ -42,7 +42,7 @@ def train():
     eps_clip = 0.2          # clip parameter for PPO
     gamma = 0.99            # discount factor
 
-    lr_actor = 0.0003       # learning rate for actor network
+    lr_actor = 0.0003       # learning rate for actor network #interesting to use different learning rate
     lr_critic = 0.001       # learning rate for critic network
 
     random_seed = 0         # set random seed if required (0 = no random seed)
